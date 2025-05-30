@@ -1,16 +1,11 @@
 # Node modules
-Backend/node_modules/
-Frontend/node_modules/
+/node_modules/
 
 # Environment variables
-Backend/.env
+/.env
 
 # Uploads (jika file upload tidak ingin diikutsertakan)
-Backend/uploads/
-
-# Build output (frontend)
-Frontend/dist/
-Frontend/build/
+/uploads/
 
 # Logs
 *.log
@@ -22,8 +17,6 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Vite cache
-Frontend/node_modules/.vite/
 
 # IDE/editor folders (opsional)
 .vscode/
