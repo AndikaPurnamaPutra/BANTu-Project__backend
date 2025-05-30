@@ -7,6 +7,10 @@
 # Uploads (jika file upload tidak ingin diikutsertakan)
 /uploads/
 
+# Build output (frontend)
+/dist/
+/build/
+
 # Logs
 *.log
 npm-debug.log*
@@ -16,7 +20,6 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
-
 
 # IDE/editor folders (opsional)
 .vscode/
