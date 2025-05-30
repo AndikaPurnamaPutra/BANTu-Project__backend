@@ -5,7 +5,7 @@
 /.env
 
 # Uploads (jika file upload tidak ingin diikutsertakan)
-/uploads/
+**/uploads/
 
 # Build output (frontend)
 /dist/
