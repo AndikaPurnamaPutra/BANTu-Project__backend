@@ -20,10 +20,24 @@ connectDB();
 
 const app = express();
 
+const allowedOrigins = [
+  'http://localhost:5173', // frontend lokal development Vite
+  'https://ban-tu-project-frontend.vercel.app', // frontend production Vercel
+];
+
 app.use(
   cors({
-    origin: 'http://localhost:5173', // ganti dengan URL frontend kamu
-    credentials: true, // opsional, kalau pakai cookies
+    origin: function (origin, callback) {
+      // Kalau request dari Postman, curl, dll (no origin)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true, // kalau menggunakan cookie/session
   })
 );
 
