@@ -128,20 +128,66 @@ exports.toggleLike = async (req, res) => {
 };
 
 // Update portfolio (tidak untuk update media file)
+// exports.update = async (req, res) => {
+//   try {
+//     const portfolio = await Portfolio.findByIdAndUpdate(
+//       req.params.id,
+//       req.body,
+//       { new: true }
+//     );
+//     if (!portfolio)
+//       return res.status(404).json({ message: 'Portfolio not found' });
+//     res.json(portfolio);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 exports.update = async (req, res) => {
   try {
-    const portfolio = await Portfolio.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+    const portfolioId = req.params.id;
+
+    // Parse existingMedia yang dikirim dari frontend (array URL)
+    let existingMedia = [];
+    if (req.body.existingMedia) {
+      try {
+        existingMedia = JSON.parse(req.body.existingMedia);
+      } catch (err) {
+        return res.status(400).json({ message: 'Invalid existingMedia format' });
+      }
+    }
+
+    // Ambil media baru dari upload
+    const newMedia = req.files ? req.files.map((file) => file.path) : [];
+
+    // Gabungkan media yang dipertahankan dengan media baru
+    const updatedMedia = [...existingMedia, ...newMedia];
+
+    // Prepare update data
+    const updateData = {
+      title: req.body.title?.trim(),
+      description: req.body.description || '',
+      category: req.body.category?.trim().toLowerCase(),
+      clientMessage: req.body.clientMessage || '',
+      media: updatedMedia,
+    };
+
+    // Update portfolio
+    const updatedPortfolio = await Portfolio.findByIdAndUpdate(
+      portfolioId,
+      updateData,
       { new: true }
     );
-    if (!portfolio)
+
+    if (!updatedPortfolio)
       return res.status(404).json({ message: 'Portfolio not found' });
-    res.json(portfolio);
+
+    res.json(updatedPortfolio);
   } catch (error) {
+    console.error('Error updating portfolio:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Delete portfolio
 exports.delete = async (req, res) => {

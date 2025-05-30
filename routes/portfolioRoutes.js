@@ -35,6 +35,20 @@ router.post(
   portfolioController.create
 );
 
+router.put(
+  '/:id',
+  protect,
+  (req, res, next) => {
+    upload.array('media', 10)(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  },
+  portfolioController.update
+);
+
 router.get('/:id', portfolioController.getById);
 router.put('/:id', protect, portfolioController.update);
 router.delete('/:id', protect, portfolioController.delete);
