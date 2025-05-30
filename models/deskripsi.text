@@ -1,0 +1,2 @@
+models/
+Berisi struktur skema mongoose sesuai dengan entitas pada class diagram (seperti User, Portfolio, dll).

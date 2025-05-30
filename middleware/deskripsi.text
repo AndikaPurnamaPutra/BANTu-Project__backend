@@ -1,0 +1,2 @@
+middleware/
+Berisi fungsi perantara, misalnya autentikasi JWT. Misal hanya user yang login yang bisa membuat portfolio.

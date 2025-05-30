@@ -1,0 +1,2 @@
+controllers/
+Berisi logic bisnis: membuat, mengedit, menghapus, dan membaca data. File controller akan menerima request dari routes, lalu mengakses models.

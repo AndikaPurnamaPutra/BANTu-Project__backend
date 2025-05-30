@@ -1,0 +1,2 @@
+config/
+Untuk konfigurasi koneksi database dan hal penting lainnya (misalnya: config/db.js untuk MongoDB).

@@ -1,0 +1,2 @@
+routes/
+Berisi endpoint/route yang akan digunakan oleh frontend untuk berkomunikasi dengan backend. Contoh: POST /api/user/login akan diarahkan ke userController.login.
