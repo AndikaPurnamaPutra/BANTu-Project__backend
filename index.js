@@ -23,6 +23,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173', // frontend lokal development Vite
   'https://ban-tu-project-frontend.vercel.app', // frontend production Vercel
+  'https://your-frontend-railway-url.up.railway.app',
 ];
 
 app.use(
