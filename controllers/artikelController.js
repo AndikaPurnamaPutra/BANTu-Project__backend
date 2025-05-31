@@ -1,6 +1,7 @@
 const Artikel = require('../models/Artikel');
 
 exports.create = async (req, res) => {
+  console.log('File uploaded:', req.file);
   try {
     const { title, content, category, tags } = req.body;
     const authorID = req.user;
