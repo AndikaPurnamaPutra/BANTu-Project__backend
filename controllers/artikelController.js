@@ -15,7 +15,7 @@ exports.create = async (req, res) => {
       }
     }
 
-    const coverImage = req.file ? req.file.secure_url : undefined;
+    const coverImage = req.file ? req.file.path : undefined;
 
     const artikel = new Artikel({
       title,
@@ -73,7 +73,7 @@ exports.update = async (req, res) => {
     const updateData = { title, content, category, tags: parsedTags };
 
     if (req.file) {
-      updateData.coverImage = req.file.secure_url;
+      updateData.coverImage = req.file.path;
     }
 
     const artikel = await Artikel.findByIdAndUpdate(req.params.id, updateData, {
