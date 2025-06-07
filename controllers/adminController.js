@@ -12,23 +12,23 @@ const Forum = require('../models/Forum');
 exports.registerAdmin = async (req, res) => {
   const { username, email, password } = req.body;
   try {
-    const adminExists = await Admin.findOne({ email });
+    const adminExists = await Admin.findOne({ adminEmail: email });
     if (adminExists)
       return res.status(400).json({ message: 'Email sudah digunakan' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newAdmin = new Admin({
-      username,
-      email,
-      password: hashedPassword,
-      role: 'admin',
+      adminUsername: username,
+      adminEmail: email,
+      adminPassword: hashedPassword,
+      // adminRole otomatis 'admin', tidak perlu diisi
     });
 
     await newAdmin.save();
 
     const token = jwt.sign(
-      { adminId: newAdmin._id, role: newAdmin.role },
+      { adminId: newAdmin._id, role: newAdmin.adminRole },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -44,15 +44,15 @@ exports.registerAdmin = async (req, res) => {
 exports.loginAdmin = async (req, res) => {
   const { username, password } = req.body;
   try {
-    const admin = await Admin.findOne({ username });
+    const admin = await Admin.findOne({ adminUsername: username });
     if (!admin)
       return res.status(404).json({ message: 'Admin tidak ditemukan' });
 
-    const isMatch = await bcrypt.compare(password, admin.password);
+    const isMatch = await bcrypt.compare(password, admin.adminPassword);
     if (!isMatch) return res.status(400).json({ message: 'Password salah' });
 
     const token = jwt.sign(
-      { adminId: admin._id, role: admin.role },
+      { adminId: admin._id, role: admin.adminRole },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -165,7 +165,9 @@ exports.deleteUser = async (req, res) => {
 // Optional: Get admin profile
 exports.getAdminProfile = async (req, res) => {
   try {
-    const admin = await Admin.findById(req.user.adminId).select('-password');
+    const admin = await Admin.findById(req.user.adminId).select(
+      '-adminPassword'
+    );
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
     res.json(admin);
   } catch (error) {

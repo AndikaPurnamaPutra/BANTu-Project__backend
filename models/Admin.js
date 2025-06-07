@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 
 const adminSchema = new mongoose.Schema(
   {
-    username: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, default: 'admin' }, // Default role adalah admin
+    adminUsername: { type: String, required: true },
+    adminEmail: { type: String, required: true, unique: true },
+    adminPassword: { type: String, required: true },
+    adminRole: { type: String, default: 'admin', immutable: true }, // tidak bisa diubah
   },
   { timestamps: true }
 );
