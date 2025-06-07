@@ -1,5 +1,4 @@
 const Artikel = require('../models/Artikel');
-const cloudinary = require('../config/cloudinaryConfig');
 
 exports.create = async (req, res) => {
   console.log('File uploaded:', req.file);
@@ -16,8 +15,7 @@ exports.create = async (req, res) => {
       }
     }
 
-    const coverImage = req.file ? req.file.url : undefined;
-    const coverImagePublicId = req.file ? req.file.public_id : undefined;
+    const coverImage = req.file ? req.file.path : undefined;
 
     const artikel = new Artikel({
       title,
@@ -26,7 +24,6 @@ exports.create = async (req, res) => {
       tags: parsedTags,
       authorID,
       coverImage,
-      coverImagePublicId,
     });
 
     await artikel.save();
@@ -62,10 +59,7 @@ exports.getById = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    console.log('req.file:', req.file);
-    console.log('req.body.existingCoverImage:', req.body.existingCoverImage);
-
-    const { title, content, category, tags, existingCoverImage } = req.body;
+    const { title, content, category, tags } = req.body;
 
     let parsedTags = [];
     if (tags) {
@@ -78,69 +72,25 @@ exports.update = async (req, res) => {
 
     const updateData = { title, content, category, tags: parsedTags };
 
-    // Ambil artikel lama supaya bisa hapus gambar lama
-    const artikelLama = await Artikel.findById(req.params.id);
-    if (!artikelLama)
-      return res.status(404).json({ message: 'Artikel not found' });
-
-    // Case 1 → upload new image → hapus lama di Cloudinary
     if (req.file) {
-      if (artikelLama.coverImagePublicId) {
-        try {
-          await cloudinary.uploader.destroy(artikelLama.coverImagePublicId);
-          console.log('Old image deleted from Cloudinary');
-        } catch (err) {
-          console.warn('Failed to delete old image:', err.message);
-        }
-      }
-
-      updateData.coverImage = req.file.url;
-      updateData.coverImagePublicId = req.file.public_id;
+      updateData.coverImage = req.file.path;
     }
-    // Case 2 → user ingin clear image → hapus lama di Cloudinary
-    else if (existingCoverImage === '') {
-      if (artikelLama.coverImagePublicId) {
-        try {
-          await cloudinary.uploader.destroy(artikelLama.coverImagePublicId);
-          console.log('Old image deleted from Cloudinary');
-        } catch (err) {
-          console.warn('Failed to delete old image:', err.message);
-        }
-      }
-
-      updateData.coverImage = '';
-      updateData.coverImagePublicId = '';
-    }
-
-    console.log('Final updateData:', updateData);
 
     const artikel = await Artikel.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
 
+    if (!artikel) return res.status(404).json({ message: 'Artikel not found' });
     res.json(artikel);
   } catch (error) {
-    console.error('Update error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.delete = async (req, res) => {
   try {
-    const artikel = await Artikel.findById(req.params.id);
+    const artikel = await Artikel.findByIdAndDelete(req.params.id);
     if (!artikel) return res.status(404).json({ message: 'Artikel not found' });
-
-    // Hapus gambar di Cloudinary kalau ada
-    if (artikel.coverImagePublicId) {
-      try {
-        await cloudinary.uploader.destroy(artikel.coverImagePublicId);
-        console.log('Cover image deleted from Cloudinary');
-      } catch (err) {
-        console.warn('Failed to delete cover image:', err.message);
-      }
-    }
-
-    await Artikel.findByIdAndDelete(req.params.id);
     res.json({ message: 'Artikel deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
