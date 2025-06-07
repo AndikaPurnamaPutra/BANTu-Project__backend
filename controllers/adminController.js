@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Portfolio = require('../models/Portfolio');
 const Artikel = require('../models/Artikel');
 const Event = require('../models/Event');
-const Project = require('../models/Project');
+const Loker = require('../models/Loker');
 const Forum = require('../models/Forum');
 
 // Register admin
@@ -71,7 +71,7 @@ exports.getAdminStats = async (req, res) => {
     const artikelCount = await Artikel.countDocuments();
     const forumsCount = await Forum.countDocuments();
     const portfolioCount = await Portfolio.countDocuments();
-    const projectCount = await Project.countDocuments();
+    const lokerCount = await Loker.countDocuments();
     const eventCount = await Event.countDocuments();
 
     res.json({
@@ -79,7 +79,7 @@ exports.getAdminStats = async (req, res) => {
       articles: artikelCount,
       forums: forumsCount,
       portfolios: portfolioCount,
-      projects: projectCount,
+      lokers: lokerCount,
       events: eventCount,
     });
   } catch (error) {
