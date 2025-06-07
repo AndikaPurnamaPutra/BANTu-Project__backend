@@ -12,6 +12,7 @@ const artikelSchema = new mongoose.Schema(
       required: true,
     },
     coverImage: { type: String }, // URL atau path gambar cover
+    coverImagePublicId: { type: String },
   },
   { timestamps: true }
 );
