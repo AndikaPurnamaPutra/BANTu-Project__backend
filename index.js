@@ -22,7 +22,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:5173', // frontend lokal development Vite
-  'http://localhost:4173/',
+  'http://localhost:4173',
   'https://ban-tu-project-frontend.vercel.app', // frontend production Vercel
   'https://bantuproojek.vercel.app',
   'https://your-frontend-railway-url.up.railway.app',
