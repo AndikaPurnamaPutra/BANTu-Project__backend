@@ -25,6 +25,8 @@ const allowedOrigins = [
   'http://localhost:4173',
   'https://ban-tu-project-frontend.vercel.app', // frontend production Vercel
   'https://bantuproojek.vercel.app',
+  'https://bantu-proojek.com',
+  'https://www.bantu-proojek.com',
   'https://your-frontend-railway-url.up.railway.app',
 ];
 
