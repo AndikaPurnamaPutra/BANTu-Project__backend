@@ -1,5 +1,5 @@
 const Project = require('../models/Project');
-const User = require('../models/User');
+const User = require('../models/User'); // Diperlukan untuk validasi role jika tidak dari token
 
 exports.create = async (req, res) => {
   try {
@@ -9,22 +9,54 @@ exports.create = async (req, res) => {
       estimasiPengerjaan,
       estimasiAnggaranMin,
       estimasiAnggaranMax,
-      artisanID,
     } = req.body;
 
-    // Validasi artisan
-    const artisan = await User.findById(artisanID);
-    if (!artisan)
-      return res.status(400).json({ message: 'Artisan (user) not found' });
-    if (artisan.role !== 'artisan')
-      return res.status(400).json({ message: 'User is not an artisan' });
+    const artisanID = req.user.userId; // Ambil artisanID dari token yang diautentikasi
+
+    if (req.user.role !== 'artisan') {
+      return res
+        .status(403)
+        .json({ message: 'Hanya artisan yang dapat membuat proyek.' });
+    }
+
+    const finalEstimasiPengerjaan = Number(estimasiPengerjaan);
+    const finalEstimasiAnggaranMin = Number(estimasiAnggaranMin);
+    const finalEstimasiAnggaranMax = estimasiAnggaranMax
+      ? Number(estimasiAnggaranMax)
+      : undefined;
+
+    if (isNaN(finalEstimasiPengerjaan) || finalEstimasiPengerjaan <= 0) {
+      return res
+        .status(400)
+        .json({ message: 'Estimasi pengerjaan harus angka positif.' });
+    }
+    if (isNaN(finalEstimasiAnggaranMin) || finalEstimasiAnggaranMin < 100000) {
+      return res
+        .status(400)
+        .json({
+          message:
+            'Estimasi anggaran minimal harus lebih dari atau sama dengan Rp 100.000.',
+        });
+    }
+    if (
+      finalEstimasiAnggaranMax !== undefined &&
+      (isNaN(finalEstimasiAnggaranMax) ||
+        finalEstimasiAnggaranMax < finalEstimasiAnggaranMin)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message:
+            'Estimasi anggaran maksimal harus lebih besar dari anggaran minimal.',
+        });
+    }
 
     const project = new Project({
       judulProyek,
       deskripsi,
-      estimasiPengerjaan,
-      estimasiAnggaranMin,
-      estimasiAnggaranMax,
+      estimasiPengerjaan: finalEstimasiPengerjaan,
+      estimasiAnggaranMin: finalEstimasiAnggaranMin,
+      estimasiAnggaranMax: finalEstimasiAnggaranMax,
       artisanID,
     });
 
@@ -32,69 +64,163 @@ exports.create = async (req, res) => {
 
     res.status(201).json(project);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    console.error('Error creating project:', error);
+    res.status(500).json({ message: error.message || 'Gagal membuat proyek.' });
   }
 };
 
 exports.getAll = async (req, res) => {
   try {
     const projects = await Project.find()
-      .populate('artisanID', '-password')
+      .populate('artisanID', 'firstName username profilePic')
       .lean();
 
     res.json(projects);
   } catch (error) {
     console.error('Error in project getAll:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil proyek.' });
   }
 };
 
 exports.getById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .populate('artisanID', '-password')
+      .populate('artisanID', 'firstName username profilePic')
       .lean();
 
-    if (!project) return res.status(404).json({ message: 'Project not found' });
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
 
     res.json(project);
   } catch (error) {
     console.error('Error in project getById:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil detail proyek.' });
   }
 };
 
 exports.update = async (req, res) => {
   try {
-    if (req.body.artisanID) {
-      const artisan = await User.findById(req.body.artisanID);
-      if (!artisan)
-        return res.status(400).json({ message: 'Artisan (user) not found' });
-      if (artisan.role !== 'artisan')
-        return res.status(400).json({ message: 'User is not an artisan' });
+    const projectId = req.params.id;
+    const currentUserId = req.user.userId;
+    const currentUserRole = req.user.role;
+
+    const projectToUpdate = await Project.findById(projectId);
+    if (!projectToUpdate) {
+      return res.status(404).json({ message: 'Proyek tidak ditemukan.' });
     }
 
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    // Otorisasi: Hanya pemilik proyek (artisanID) atau admin yang bisa update
+    if (
+      projectToUpdate.artisanID.toString() !== currentUserId.toString() &&
+      currentUserRole !== 'admin'
+    ) {
+      return res
+        .status(403)
+        .json({
+          message: 'Anda tidak memiliki izin untuk mengupdate proyek ini.',
+        });
+    }
 
-    if (!project) return res.status(404).json({ message: 'Project not found' });
+    const {
+      judulProyek,
+      deskripsi,
+      estimasiPengerjaan,
+      estimasiAnggaranMin,
+      estimasiAnggaranMax,
+    } = req.body;
 
-    res.json(project);
+    const finalEstimasiPengerjaan = Number(estimasiPengerjaan);
+    const finalEstimasiAnggaranMin = Number(estimasiAnggaranMin);
+    const finalEstimasiAnggaranMax = estimasiAnggaranMax
+      ? Number(estimasiAnggaranMax)
+      : undefined;
+
+    if (isNaN(finalEstimasiPengerjaan) || finalEstimasiPengerjaan <= 0) {
+      return res
+        .status(400)
+        .json({ message: 'Estimasi pengerjaan harus angka positif.' });
+    }
+    if (isNaN(finalEstimasiAnggaranMin) || finalEstimasiAnggaranMin < 100000) {
+      return res
+        .status(400)
+        .json({
+          message:
+            'Estimasi anggaran minimal harus lebih dari atau sama dengan Rp 100.000.',
+        });
+    }
+    if (
+      finalEstimasiAnggaranMax !== undefined &&
+      (isNaN(finalEstimasiAnggaranMax) ||
+        finalEstimasiAnggaranMax < finalEstimasiAnggaranMin)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message:
+            'Estimasi anggaran maksimal harus lebih besar dari anggaran minimal.',
+        });
+    }
+
+    const updateData = {
+      judulProyek,
+      deskripsi,
+      estimasiPengerjaan: finalEstimasiPengerjaan,
+      estimasiAnggaranMin: finalEstimasiAnggaranMin,
+      estimasiAnggaranMax: finalEstimasiAnggaranMax,
+    };
+
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    res.json(updatedProject);
   } catch (error) {
     console.error('Error in project update:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengupdate proyek.' });
   }
 };
 
 exports.delete = async (req, res) => {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
-    if (!project) return res.status(404).json({ message: 'Project not found' });
-    res.json({ message: 'Project deleted' });
+    const projectId = req.params.id;
+    const currentUserId = req.user.userId;
+    const currentUserRole = req.user.role;
+
+    const projectToDelete = await Project.findById(projectId);
+    if (!projectToDelete) {
+      return res.status(404).json({ message: 'Proyek tidak ditemukan.' });
+    }
+
+    // Otorisasi: Hanya pemilik proyek (artisanID) atau admin yang bisa delete
+    if (
+      projectToDelete.artisanID.toString() !== currentUserId.toString() &&
+      currentUserRole !== 'admin'
+    ) {
+      return res
+        .status(403)
+        .json({
+          message: 'Anda tidak memiliki izin untuk menghapus proyek ini.',
+        });
+    }
+
+    await Project.findByIdAndDelete(projectId);
+    res.json({ message: 'Proyek berhasil dihapus.' });
   } catch (error) {
     console.error('Error in project delete:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal menghapus proyek.' });
   }
 };
