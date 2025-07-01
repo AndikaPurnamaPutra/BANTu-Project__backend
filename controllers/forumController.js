@@ -4,25 +4,37 @@ const CommentForum = require('../models/CommentForum');
 exports.create = async (req, res) => {
   try {
     const { title, description } = req.body;
-    const userID = req.user;
+    const userID = req.user.userId; // Mengambil userID dari token yang diautentikasi
+
+    if (!userID) {
+      return res
+        .status(401)
+        .json({
+          message: 'Tidak terautentikasi. ID pengguna tidak ditemukan.',
+        });
+    }
 
     const forum = new Forum({ title, description, userID });
     await forum.save();
 
     res.status(201).json(forum);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error creating forum:', error);
+    res.status(500).json({ message: error.message || 'Gagal membuat forum.' });
   }
 };
 
 exports.getAll = async (req, res) => {
   try {
     const forums = await Forum.find()
-      .populate('userID', '-password')
+      .populate('userID', 'firstName username profilePic') // Memilih field profil user yang relevan
       .sort({ creationDate: -1 });
     res.json(forums);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error in getAll forums:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil forum.' });
   }
 };
 
@@ -30,37 +42,90 @@ exports.getById = async (req, res) => {
   try {
     const forum = await Forum.findById(req.params.id).populate(
       'userID',
-      '-password'
+      'firstName username profilePic'
     );
-    if (!forum) return res.status(404).json({ message: 'Forum not found' });
+    if (!forum) {
+      return res.status(404).json({ message: 'Forum tidak ditemukan.' });
+    }
     res.json(forum);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error in getById forum:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil detail forum.' });
   }
 };
 
 exports.update = async (req, res) => {
   try {
-    const forum = await Forum.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!forum) return res.status(404).json({ message: 'Forum not found' });
-    res.json(forum);
+    const forumId = req.params.id;
+    const { title, description } = req.body;
+    const currentUserId = req.user.userId; // ID user yang sedang login
+
+    const forumToUpdate = await Forum.findById(forumId);
+    if (!forumToUpdate) {
+      return res.status(404).json({ message: 'Forum tidak ditemukan.' });
+    }
+
+    // Otorisasi: Hanya pemilik forum atau admin yang bisa update
+    if (
+      forumToUpdate.userID.toString() !== currentUserId.toString() &&
+      req.user.role !== 'admin'
+    ) {
+      return res
+        .status(403)
+        .json({
+          message: 'Anda tidak memiliki izin untuk mengupdate forum ini.',
+        });
+    }
+
+    const updatedForum = await Forum.findByIdAndUpdate(
+      forumId,
+      { title, description },
+      { new: true, runValidators: true }
+    );
+
+    res.json(updatedForum);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error updating forum:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengupdate forum.' });
   }
 };
 
 exports.delete = async (req, res) => {
   try {
-    const forum = await Forum.findByIdAndDelete(req.params.id);
-    if (!forum) return res.status(404).json({ message: 'Forum not found' });
+    const forumId = req.params.id;
+    const currentUserId = req.user.userId; // ID user yang sedang login
+
+    const forumToDelete = await Forum.findById(forumId);
+    if (!forumToDelete) {
+      return res.status(404).json({ message: 'Forum tidak ditemukan.' });
+    }
+
+    // Otorisasi: Hanya pemilik forum atau admin yang bisa delete
+    if (
+      forumToDelete.userID.toString() !== currentUserId.toString() &&
+      req.user.role !== 'admin'
+    ) {
+      return res
+        .status(403)
+        .json({
+          message: 'Anda tidak memiliki izin untuk menghapus forum ini.',
+        });
+    }
+
+    await Forum.findByIdAndDelete(forumId);
 
     // Hapus semua komentar yang terkait forum ini
-    await CommentForum.deleteMany({ forumID: req.params.id });
+    await CommentForum.deleteMany({ forumID: forumId });
 
-    res.json({ message: 'Forum and its comments deleted' });
+    res.json({ message: 'Forum dan komentarnya berhasil dihapus.' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error deleting forum:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal menghapus forum.' });
   }
 };
