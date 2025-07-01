@@ -1,5 +1,5 @@
 const Project = require('../models/Project');
-const User = require('../models/User'); // Diperlukan untuk validasi role jika tidak dari token
+const User = require('../models/User');
 
 exports.create = async (req, res) => {
   try {
@@ -9,14 +9,19 @@ exports.create = async (req, res) => {
       estimasiPengerjaan,
       estimasiAnggaranMin,
       estimasiAnggaranMax,
+      designerID, // Ambil designerID dari req.body
     } = req.body;
 
-    const artisanID = req.user.userId; // Ambil artisanID dari token yang diautentikasi
+    const artisanID = req.user.userId;
 
     if (req.user.role !== 'artisan') {
       return res
         .status(403)
         .json({ message: 'Hanya artisan yang dapat membuat proyek.' });
+    }
+
+    if (!designerID) {
+      return res.status(400).json({ message: 'ID desainer wajib diisi.' });
     }
 
     const finalEstimasiPengerjaan = Number(estimasiPengerjaan);
@@ -58,6 +63,7 @@ exports.create = async (req, res) => {
       estimasiAnggaranMin: finalEstimasiAnggaranMin,
       estimasiAnggaranMax: finalEstimasiAnggaranMax,
       artisanID,
+      designerID, // Tetapkan designerID ke objek Project
     });
 
     await project.save();
@@ -65,6 +71,10 @@ exports.create = async (req, res) => {
     res.status(201).json(project);
   } catch (error) {
     console.error('Error creating project:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
     res.status(500).json({ message: error.message || 'Gagal membuat proyek.' });
   }
 };
@@ -73,6 +83,7 @@ exports.getAll = async (req, res) => {
   try {
     const projects = await Project.find()
       .populate('artisanID', 'firstName username profilePic')
+      .populate('designerID', 'firstName username profilePic')
       .lean();
 
     res.json(projects);
@@ -88,6 +99,7 @@ exports.getById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate('artisanID', 'firstName username profilePic')
+      .populate('designerID', 'firstName username profilePic')
       .lean();
 
     if (!project) {
@@ -114,7 +126,6 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: 'Proyek tidak ditemukan.' });
     }
 
-    // Otorisasi: Hanya pemilik proyek (artisanID) atau admin yang bisa update
     if (
       projectToUpdate.artisanID.toString() !== currentUserId.toString() &&
       currentUserRole !== 'admin'
@@ -186,6 +197,10 @@ exports.update = async (req, res) => {
     res.json(updatedProject);
   } catch (error) {
     console.error('Error in project update:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
     res
       .status(500)
       .json({ message: error.message || 'Gagal mengupdate proyek.' });
@@ -203,7 +218,6 @@ exports.delete = async (req, res) => {
       return res.status(404).json({ message: 'Proyek tidak ditemukan.' });
     }
 
-    // Otorisasi: Hanya pemilik proyek (artisanID) atau admin yang bisa delete
     if (
       projectToDelete.artisanID.toString() !== currentUserId.toString() &&
       currentUserRole !== 'admin'
