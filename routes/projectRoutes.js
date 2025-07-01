@@ -35,7 +35,7 @@ router.get(
 router.post(
   '/',
   authenticateToken,
-  authorizeRoles('designer'), // Hanya desainer yang bisa membuat proyek
+  authorizeRoles('designer', 'artisan'), // Hanya artisan yang bisa membuat proyek
   projectController.create
 );
 
