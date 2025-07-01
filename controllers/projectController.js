@@ -9,7 +9,7 @@ exports.create = async (req, res) => {
       estimasiPengerjaan,
       estimasiAnggaranMin,
       estimasiAnggaranMax,
-      designerID, // Ambil designerID dari req.body
+      designerID, // PERBAIKAN 1: Ambil designerID dari req.body
     } = req.body;
 
     const artisanID = req.user.userId;
@@ -20,9 +20,14 @@ exports.create = async (req, res) => {
         .json({ message: 'Hanya artisan yang dapat membuat proyek.' });
     }
 
+    // PERBAIKAN 2: Validasi designerID
     if (!designerID) {
       return res.status(400).json({ message: 'ID desainer wajib diisi.' });
     }
+    // Optional: Anda bisa menambahkan validasi format ObjectId untuk designerID di sini
+    // if (typeof designerID !== 'string' || designerID.length !== 24) {
+    //   return res.status(400).json({ message: 'Format ID desainer tidak valid.' });
+    // }
 
     const finalEstimasiPengerjaan = Number(estimasiPengerjaan);
     const finalEstimasiAnggaranMin = Number(estimasiAnggaranMin);
@@ -63,7 +68,7 @@ exports.create = async (req, res) => {
       estimasiAnggaranMin: finalEstimasiAnggaranMin,
       estimasiAnggaranMax: finalEstimasiAnggaranMax,
       artisanID,
-      designerID, // Tetapkan designerID ke objek Project
+      designerID, // PERBAIKAN 3: Tetapkan designerID ke objek Project
     });
 
     await project.save();
@@ -83,7 +88,7 @@ exports.getAll = async (req, res) => {
   try {
     const projects = await Project.find()
       .populate('artisanID', 'firstName username profilePic')
-      .populate('designerID', 'firstName username profilePic')
+      .populate('designerID', 'firstName username profilePic') // PERBAIKAN 4: Populate designerID juga
       .lean();
 
     res.json(projects);
@@ -99,7 +104,7 @@ exports.getById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate('artisanID', 'firstName username profilePic')
-      .populate('designerID', 'firstName username profilePic')
+      .populate('designerID', 'firstName username profilePic') // PERBAIKAN 5: Populate designerID juga
       .lean();
 
     if (!project) {
