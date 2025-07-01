@@ -42,17 +42,15 @@
 
 // module.exports = router;
 
-// routes/portfolioRoutes.js
 const express = require('express');
 const router = express.Router();
 const portfolioController = require('../controllers/portfolioController');
-// **Perubahan di sini:** Destructuring untuk mengimpor fungsi spesifik
 const {
   authenticateToken,
   authorizeRoles,
 } = require('../middleware/authMiddleware');
-const optionalAuth = require('../middleware/optionalAuth'); // Pastikan ini juga diimpor dengan benar
-const upload = require('../middleware/uploadMiddleware'); // Middleware untuk upload file portfolio
+const optionalAuth = require('../middleware/optionalAuth');
+const upload = require('../middleware/uploadMiddleware'); // Instance Multer yang sudah dikonfigurasi
 const {
   createPortfolioValidation,
 } = require('../validators/portfolioValidator');
@@ -60,46 +58,53 @@ const { validationResult } = require('express-validator');
 
 const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty())
+  if (!errors.isEmpty()) {
+    console.error('--- EXPRESS-VALIDATOR ERRORS ---');
+    console.error(errors.array());
+    console.error('--- REQUEST BODY ---', req.body);
+    console.error('--- REQUEST FILE ---', req.file);
+    console.error('--- REQUEST FILES ---', req.files);
+    console.error('--------------------------------');
     return res.status(400).json({ errors: errors.array() });
+  }
   next();
 };
 
-// Gunakan optionalAuth supaya bisa akses tanpa login, tapi jika token ada bisa dipakai
-router.get('/', optionalAuth, portfolioController.getAll); // Asumsi optionalAuth adalah fungsi middleware
+// Rute publik untuk mendapatkan semua portofolio (dengan optionalAuth)
+router.get('/', optionalAuth, portfolioController.getAll);
 
-// Rute untuk membuat portfolio
+// Rute untuk membuat portofolio
 router.post(
   '/',
-  authenticateToken, // Gunakan authenticateToken di sini
-  authorizeRoles('designer', 'artisan'), // Tambahkan otorisasi untuk yang bisa membuat portfolio
-  (req, res, next) => {
-    // Middleware upload file media untuk portfolio
-    upload.array('media', 10)(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({ message: err.message });
-      }
-      next();
-    });
-  },
+  authenticateToken,
+  authorizeRoles('designer', 'artisan', 'admin'), // Admin juga bisa membuat
+  upload.array('media', 10), // Middleware Multer untuk upload banyak file
   createPortfolioValidation,
   validateRequest,
   portfolioController.create
 );
 
-router.get('/:id', portfolioController.getById);
+// Rute publik untuk mendapatkan portofolio berdasarkan ID
+router.get('/:id', optionalAuth, portfolioController.getById);
+
+// Rute untuk mengupdate portofolio
 router.put(
   '/:id',
   authenticateToken,
-  authorizeRoles('designer', 'artisan'),
+  authorizeRoles('designer', 'artisan', 'admin'), // Admin juga bisa mengupdate
+  upload.array('media', 10), // Middleware Multer untuk update file (jika ada)
   portfolioController.update
-); // Perbaiki di sini
+);
+
+// Rute untuk menghapus portofolio
 router.delete(
   '/:id',
   authenticateToken,
-  authorizeRoles('designer', 'artisan'),
+  authorizeRoles('designer', 'artisan', 'admin'), // Admin juga bisa menghapus
   portfolioController.delete
-); // Perbaiki di sini
-router.put('/:id/like', authenticateToken, portfolioController.toggleLike); // Perbaiki di sini
+);
+
+// Rute untuk toggle like/unlike portofolio
+router.put('/:id/like', authenticateToken, portfolioController.toggleLike);
 
 module.exports = router;

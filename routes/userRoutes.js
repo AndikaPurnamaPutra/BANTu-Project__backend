@@ -55,7 +55,6 @@
 
 // module.exports = router;
 
-// routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
@@ -64,6 +63,7 @@ const {
   authorizeRoles,
 } = require('../middleware/authMiddleware');
 const uploadUserMiddleware = require('../middleware/uploadUserMiddleware');
+const uploadPortfolioMiddleware = require('../middleware/uploadMiddleware'); // Pastikan ini diimpor dengan benar
 const {
   registerValidation,
   updateProfileValidation,
@@ -71,11 +71,9 @@ const {
 const { validationResult } = require('express-validator');
 const portfolioController = require('../controllers/portfolioController');
 
-// Middleware untuk menangani hasil validasi dari express-validator
 const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    // Logging detail untuk debugging validasi
     console.error('--- EXPRESS-VALIDATOR ERRORS ---');
     console.error(errors.array());
     console.error('--- REQUEST BODY ---', req.body);
@@ -86,9 +84,8 @@ const validateRequest = (req, res, next) => {
   next();
 };
 
-// --- Rute Publik (Tidak Memerlukan Autentikasi) ---
+// --- Rute Publik ---
 
-// Registrasi pengguna (untuk semua peran: admin, designer, artisan)
 router.post(
   '/register',
   uploadUserMiddleware.single('profilePic'),
@@ -97,15 +94,12 @@ router.post(
   userController.register
 );
 
-// Login pengguna (untuk semua peran: admin, designer, artisan)
 router.post('/login', userController.login);
 
-// --- Rute yang Memerlukan Autentikasi (Untuk Pengguna Biasa & Admin yang Login) ---
+// --- Rute yang Memerlukan Autentikasi ---
 
-// Mendapatkan profil user yang sedang login
 router.get('/profile', authenticateToken, userController.getProfile);
 
-// Update profil user yang sedang login
 router.put(
   '/profile',
   authenticateToken,
@@ -114,7 +108,6 @@ router.put(
   userController.updateProfile
 );
 
-// Update profile picture user yang sedang login
 router.put(
   '/profile-pic',
   authenticateToken,
@@ -122,9 +115,8 @@ router.put(
   userController.updateProfilePic
 );
 
-// --- Rute Admin-Spesifik (Memerlukan Autentikasi DAN Otorisasi 'admin') ---
+// --- Rute Admin-Spesifik ---
 
-// Admin profile
 router.get(
   '/admin/profile',
   authenticateToken,
@@ -132,7 +124,6 @@ router.get(
   userController.getAdminProfile
 );
 
-// Admin dashboard stats
 router.get(
   '/admin/stats',
   authenticateToken,
@@ -140,7 +131,6 @@ router.get(
   userController.getAdminStats
 );
 
-// Users management (admin only)
 router.get(
   '/admin/users',
   authenticateToken,
@@ -166,7 +156,7 @@ router.delete(
   userController.deleteUser
 );
 
-// Admin Portfolios Management
+// Admin Portfolios Management (dengan Multer)
 router.get(
   '/admin/portfolios',
   authenticateToken,
@@ -177,12 +167,14 @@ router.post(
   '/admin/portfolios',
   authenticateToken,
   authorizeRoles('admin'),
+  uploadPortfolioMiddleware.array('media', 10), // Middleware Multer untuk upload
   portfolioController.create
 );
 router.put(
   '/admin/portfolios/:id',
   authenticateToken,
   authorizeRoles('admin'),
+  uploadPortfolioMiddleware.array('media', 10), // Middleware Multer untuk update
   portfolioController.update
 );
 router.delete(
@@ -192,8 +184,7 @@ router.delete(
   portfolioController.delete
 );
 
-// --- Rute Umum (Mengambil detail user berdasarkan ID) ---
-// Rute dinamis ini harus diletakkan PALING AKHIR di antara semua rute GET yang diawali dengan `/`
+// --- Rute Umum ---
 router.get('/:id', userController.getUserById);
 
 module.exports = router;

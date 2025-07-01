@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinaryConfig');
+const cloudinary = require('../config/cloudinaryConfig'); // Pastikan ini mengarah ke file konfigurasi Cloudinary Anda
 
 const storage = new CloudinaryStorage({
   cloudinary,
@@ -11,7 +11,7 @@ const storage = new CloudinaryStorage({
     const timestamp = Date.now();
 
     return {
-      folder: 'portfolios',
+      folder: 'portfolios', // Folder di Cloudinary
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi'],
       public_id: `${timestamp}-${nameWithoutExt}`,
     };
@@ -20,7 +20,7 @@ const storage = new CloudinaryStorage({
 
 const uploadMiddleware = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 }, // Batas ukuran file 20MB
 });
 
 module.exports = uploadMiddleware;
