@@ -1,6 +1,5 @@
 const Portfolio = require('../models/Portfolio');
 
-// Create portfolio + upload media
 exports.create = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -17,20 +16,23 @@ exports.create = async (req, res) => {
       category: req.body.category.trim().toLowerCase(),
       media: mediaUrls,
       clientMessage: req.body.clientMessage || '',
-      creatorID: req.user,
+      creatorID: req.user.userId, // Menggunakan req.user.userId dari token
     });
 
     await portfolio.save();
     res.status(201).json(portfolio);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error creating portfolio:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal membuat portofolio.' });
   }
 };
 
-// Get all portfolios with creator info and likes data
 exports.getAll = async (req, res) => {
   try {
-    const userId = req.user;
+    // req.user mungkin null jika rute menggunakan optionalAuth
+    const userId = req.user ? req.user.userId : null;
 
     const portfolios = await Portfolio.find()
       .populate({
@@ -54,13 +56,16 @@ exports.getAll = async (req, res) => {
     res.json(portfoliosWithLikes);
   } catch (error) {
     console.error('Error in getAll portfolios:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil portofolio.' });
   }
 };
 
-// Get single portfolio by ID with creator info and likes data
 exports.getById = async (req, res) => {
   try {
+    const userId = req.user ? req.user.userId : null;
+
     const portfolio = await Portfolio.findById(req.params.id)
       .populate({
         path: 'creatorID',
@@ -68,12 +73,12 @@ exports.getById = async (req, res) => {
       })
       .lean();
 
-    if (!portfolio)
-      return res.status(404).json({ message: 'Portfolio not found' });
+    if (!portfolio) {
+      return res.status(404).json({ message: 'Portofolio tidak ditemukan.' });
+    }
 
     portfolio.creatorID = portfolio.creatorID || {};
     const likesArray = Array.isArray(portfolio.likes) ? portfolio.likes : [];
-    const userId = req.user;
 
     portfolio.initialLiked = userId
       ? likesArray.some((id) => id.toString() === userId.toString())
@@ -83,21 +88,25 @@ exports.getById = async (req, res) => {
     res.json(portfolio);
   } catch (error) {
     console.error('getById error:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengambil portofolio.' });
   }
 };
 
-// Toggle like/unlike portfolio
 exports.toggleLike = async (req, res) => {
   try {
     const portfolioId = req.params.id;
-    const userId = req.user;
+    const userId = req.user.userId; // Menggunakan req.user.userId dari token
 
-    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (!userId) {
+      return res.status(401).json({ message: 'Tidak terautentikasi.' });
+    }
 
     const portfolio = await Portfolio.findById(portfolioId);
-    if (!portfolio)
-      return res.status(404).json({ message: 'Portfolio not found' });
+    if (!portfolio) {
+      return res.status(404).json({ message: 'Portofolio tidak ditemukan.' });
+    }
 
     if (!Array.isArray(portfolio.likes)) portfolio.likes = [];
 
@@ -117,40 +126,90 @@ exports.toggleLike = async (req, res) => {
     await portfolio.save();
 
     res.json({
-      message: liked ? 'Liked' : 'Unliked',
+      message: liked ? 'Disukai' : 'Tidak disukai',
       likesCount: portfolio.likes.length,
       liked,
     });
   } catch (error) {
     console.error('toggleLike error:', error);
-    res.status(500).json({ message: error.message });
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengubah status suka.' });
   }
 };
 
-// Update portfolio (tidak untuk update media file)
 exports.update = async (req, res) => {
   try {
-    const portfolio = await Portfolio.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
+    const portfolioId = req.params.id;
+    let { title, description, category, clientMessage, media } = req.body;
+
+    const updateData = {
+      title,
+      description,
+      category,
+      clientMessage,
+    };
+
+    // Logika untuk menangani file media
+    if (req.files && req.files.length > 0) {
+      // Jika ada file baru yang diunggah, gunakan file baru
+      updateData.media = req.files.map((file) => file.path);
+    } else if (typeof media === 'string') {
+      // Jika tidak ada file baru, tapi 'media' dikirim sebagai string (dari existingMedia)
+      try {
+        updateData.media = JSON.parse(media); // Parse string JSON kembali menjadi array
+        if (!Array.isArray(updateData.media)) {
+          return res
+            .status(400)
+            .json({ message: 'Format media yang sudah ada tidak valid.' });
+        }
+      } catch (e) {
+        console.error('Error parsing existing media:', e);
+        return res
+          .status(400)
+          .json({ message: 'Gagal memproses media yang sudah ada.' });
+      }
+    } else if (Array.isArray(media)) {
+      // Jika 'media' sudah berupa array (misalnya, jika dikirim langsung sebagai JSON biasa tanpa FormData)
+      updateData.media = media;
+    } else {
+      // Jika tidak ada file baru dan tidak ada existingMedia yang valid, set ke array kosong
+      updateData.media = [];
+    }
+
+    const updatedPortfolio = await Portfolio.findByIdAndUpdate(
+      portfolioId,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
     );
-    if (!portfolio)
-      return res.status(404).json({ message: 'Portfolio not found' });
-    res.json(portfolio);
+
+    if (!updatedPortfolio) {
+      return res.status(404).json({ message: 'Portofolio tidak ditemukan.' });
+    }
+
+    res.json(updatedPortfolio);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error updating portfolio:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal mengupdate portofolio.' });
   }
 };
 
-// Delete portfolio
 exports.delete = async (req, res) => {
   try {
     const portfolio = await Portfolio.findByIdAndDelete(req.params.id);
-    if (!portfolio)
-      return res.status(404).json({ message: 'Portfolio not found' });
-    res.json({ message: 'Portfolio deleted' });
+    if (!portfolio) {
+      return res.status(404).json({ message: 'Portofolio tidak ditemukan.' });
+    }
+    res.json({ message: 'Portofolio berhasil dihapus.' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error deleting portfolio:', error);
+    res
+      .status(500)
+      .json({ message: error.message || 'Gagal menghapus portofolio.' });
   }
 };
